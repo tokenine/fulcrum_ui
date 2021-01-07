@@ -17,10 +17,13 @@ const appNetworkId = ethereumUtils.getNetworkIdByString(appNetwork)
  */
 const bptDecimals = isKovan ? 10 ** 6 : 10 ** 18
 
+const web3ProviderSettings = ethereumUtils.getWeb3ProviderSettings(appNetworkId)
+
 export default {
   appNetwork,
   appNetworkId,
   bptDecimals,
   isKovan,
-  isMainnetProd
+  isMainnetProd,
+  web3ProviderSettings
 }

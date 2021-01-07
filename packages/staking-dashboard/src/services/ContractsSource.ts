@@ -1,13 +1,10 @@
 import _ from 'lodash'
-import { BZRXStakingInterimContract } from '../contracts/BZRXStakingInterim'
 import { erc20Contract } from '../contracts/erc20'
 import { iBZxContract } from '../contracts/iBZxContract'
 import { oracleContract } from '../contracts/oracle'
 import { StakingV1Contract } from '../contracts/stakingV1'
 // @ts-ignore
 import erc20Json from '../assets/artifacts/BUILD_APP_NETWORK/erc20.json'
-// @ts-ignore
-import BZRXStakingInterimJson from '../assets/artifacts/BUILD_APP_NETWORK/BZRXStakingInterim.json'
 // @ts-ignore
 import stakingV1Json from '../assets/artifacts/BUILD_APP_NETWORK/stakingV1.json'
 // @ts-ignore
@@ -17,12 +14,6 @@ import oracleJson from '../assets/artifacts/BUILD_APP_NETWORK/oracle.json'
 
 export class ContractsSource {
   private readonly provider: any
-  private static BZRXStakingInterimJson = BZRXStakingInterimJson
-  private static erc20Json = erc20Json
-  private static iBZxJson = iBZxJson
-  private static oracleJson = oracleJson
-  private static stakingV1Json = stakingV1Json
-
   public networkId: number
   public canWrite: boolean
 
@@ -149,48 +140,39 @@ export class ContractsSource {
     return address
   }
 
-  private getErc20ContractRaw(addressErc20: string): erc20Contract {
+  private async getErc20ContractRaw(addressErc20: string) {
     return new erc20Contract(
-      ContractsSource.erc20Json.abi,
+      erc20Json.abi,
       addressErc20.toLowerCase(),
       this.provider
     )
   }
 
-  private getOracleContractRaw(): oracleContract {
+  private async getOracleContractRaw() {
     return new oracleContract(
-      ContractsSource.oracleJson.abi,
+      oracleJson.abi,
       this.getOracleAddress().toLowerCase(),
       this.provider
     )
   }
 
-  private getStakingV1ContractRaw(): StakingV1Contract {
+  private async getStakingV1ContractRaw() {
     return new StakingV1Contract(
-      ContractsSource.stakingV1Json.abi,
+      stakingV1Json.abi,
       this.getStakingV1Address().toLowerCase(),
       this.provider
     )
   }
 
-  private getBZRXStakingInterimContractRaw(): BZRXStakingInterimContract {
-    return new BZRXStakingInterimContract(
-      ContractsSource.BZRXStakingInterimJson.abi,
-      this.getBZRXStakingInterimAddress().toLowerCase(),
-      this.provider
-    )
-  }
-
-  private getiBZxContractRaw(): iBZxContract {
+  private async getiBZxContractRaw() {
     return new iBZxContract(
-      ContractsSource.iBZxJson.abi,
+      iBZxJson.abi,
       this.getiBZxAddress().toLowerCase(),
       this.provider
     )
   }
 
   public getErc20Contract = _.memoize(this.getErc20ContractRaw)
-  public getBZRXStakingInterimContract = _.memoize(this.getBZRXStakingInterimContractRaw)
   public getiBZxContract = _.memoize(this.getiBZxContractRaw)
   public getOracleContract = _.memoize(this.getOracleContractRaw)
   public getStakingV1Contract = _.memoize(this.getStakingV1ContractRaw)

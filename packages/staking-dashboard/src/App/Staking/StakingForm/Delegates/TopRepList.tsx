@@ -1,6 +1,6 @@
 import { observer } from 'mobx-react'
 import React from 'react'
-import StakingFormVM from './StakingFormVM'
+import StakingFormVM from '../StakingFormVM'
 import Representative1 from 'app-images/representative1.png'
 import Representative2 from 'app-images/representative2.png'
 import Representative3 from 'app-images/representative3.png'
@@ -17,27 +17,26 @@ export function TopRepList({ vm }: ITopRepList) {
   const { representatives } = vm.stakingStore
 
   return (
-    <div className="calculator-row">
-      <div className="row-header">Please select representative:</div>
+    <div>
       <div
         className={`group-buttons ${
           representatives.delegateAlreadyChosen ? 'selected-delegate' : ''
         }`}>
-        {representatives.topRepsList.map((rep) => {
+        {representatives.topRepsList.map((rep, index) => {
           const cssClass = `button button-representative ${
-            rep.wallet.toLowerCase() === selectedRepAddress.toLowerCase() ? 'active' : 'no-active'
+            rep.wallet.toLowerCase() === selectedRepAddress.toLowerCase() ? 'active' : ''
           }`
-          const avatar = rep.imageSrc || defaultAvatars[rep.index % 3]
+          const avatar = rep.imageSrc || defaultAvatars[index % 3]
           return (
             <ButtonBasic
               key={rep.wallet}
               className={cssClass}
-              disabled={representatives.delegateAlreadyChosen}
+              // disabled={representatives.delegateAlreadyChosen}
               onClick={vm.set}
               onClickEmit="name-value"
               name="selectedRepAddress"
               value={rep.wallet}>
-              <img className="photo" src={avatar} alt={`Representative ${rep.index}`} />
+              <img className="photo" src={avatar} alt={`Representative ${index}`} />
               <span className="name">{rep.name}</span>
             </ButtonBasic>
           )

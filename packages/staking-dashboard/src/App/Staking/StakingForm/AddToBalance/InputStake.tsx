@@ -3,19 +3,21 @@ import React from 'react'
 import { ReactComponent as TokenBpt } from 'app-images/token-bpt.svg'
 import { ReactComponent as TokenBzrx } from 'app-images/token-bzrx.svg'
 import { ReactComponent as TokenVBzrx } from 'app-images/token-vbzrx.svg'
+import { ReactComponent as TokenIBzrx } from 'app-images/token-ibzrx.svg'
 import { InputBasic } from 'ui-framework'
 
 const icons: { [index: string]: React.ReactNode } = {
   bzrx: <TokenBzrx className="token-logo" />,
   vbzrx: <TokenVBzrx className="token-logo" />,
-  bpt: <TokenBpt className="token-logo" />
+  bpt: <TokenBpt className="token-logo" />,
+  ibzrx: <TokenIBzrx className="token-logo" />
 }
 
 interface IStakeInputProps {
   id: string
   label: string
   max: BigNumber
-  onChange: (name: 'bzrx' | 'vbzrx' | 'bpt', value: number) => void
+  onChange: (name: 'bzrx' | 'vbzrx' | 'ibzrx' | 'bpt', value: number) => void
   value: string
 }
 

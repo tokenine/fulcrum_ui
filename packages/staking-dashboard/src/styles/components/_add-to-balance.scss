@@ -1,5 +1,4 @@
 .add-to-balance {
-  background-color: #e7ebf0;
   flex-wrap: wrap;
   label {
     width: 100%;
@@ -13,19 +12,6 @@
     position: relative;
     margin-bottom: 30px;
     width: 100%;
-  }
-  button {
-    width: 100%;
-    margin-bottom: 12px;
-    &:disabled,
-    &[disabled] {
-      &,
-      &:hover {
-        background: none;
-        border: 1px solid #b9c7d6;
-        color: #b9c7d6;
-      }
-    }
   }
   &__input {
     width: 100%;
@@ -48,8 +34,7 @@
   }
   &__range {
     position: relative;
-    margin: 0 24px;
-    margin-top: -8px;
+    // margin-top: -8px;
     input {
       position: relative;
       cursor: pointer;

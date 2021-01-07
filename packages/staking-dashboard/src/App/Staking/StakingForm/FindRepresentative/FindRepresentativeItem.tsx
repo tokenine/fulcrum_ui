@@ -3,13 +3,14 @@ import React from 'react'
 import { ReactComponent as BPTIcon } from 'app-images/token-bpt.svg'
 import { ReactComponent as BzrxIcon } from 'app-images/token-bzrx.svg'
 import { ReactComponent as VBzrxIcon } from 'app-images/token-vbzrx.svg'
+import { ReactComponent as IBzrxIcon } from 'app-images/token-ibzrx.svg'
 import Representative1 from 'app-images/representative1.png'
 import Representative2 from 'app-images/representative2.png'
 import Representative3 from 'app-images/representative3.png'
-import appConfig from 'src/config/appConfig'
 import IRep from 'src/domain/IRep'
 
 export interface IFindRepresentativeItemProps {
+  index: number
   representative: IRep
   onRepClick: () => void
 }
@@ -26,29 +27,31 @@ function formatAmount(value: BigNumber): string {
 
 export function FindRepresentativeItem(props: IFindRepresentativeItemProps) {
   const { representative } = props
-  const bzrxAmount = representative.BZRX.div(10 ** 18)
-  const vbzrxAmount = representative.vBZRX.div(10 ** 18)
-  const bptAmount = representative.LPToken.div(appConfig.bptDecimals)
+  const {bzrx, vbzrx, ibzrx, bpt} = representative
 
   return (
     <li className="item-find-representative" onClick={() => props.onRepClick()}>
       <img
         className="photo"
-        src={representative.imageSrc || defaultAvatars[representative.index % 3]}
-        alt={`Representative ${representative.index}`}
+        src={representative.imageSrc || defaultAvatars[props.index % 3]}
+        alt={`Representative ${props.index}`}
       />
       <div className="name">{representative.name}</div>
-      <div className="token" title={bzrxAmount.toFixed(18)}>
+      <div className="token" title={bzrx.toFixed(18)}>
         <BzrxIcon />
-        <span>{formatAmount(bzrxAmount)}</span>
+        <span>{formatAmount(bzrx)}</span>
       </div>
-      <div className="token" title={vbzrxAmount.toFixed(18)}>
+      <div className="token" title={vbzrx.toFixed(18)}>
         <VBzrxIcon />
-        <span>{formatAmount(vbzrxAmount)}</span>
+        <span>{formatAmount(vbzrx)}</span>
       </div>
-      <div className="token" title={bptAmount.toFixed(18)}>
+      <div className="token" title={ibzrx.toFixed(18)}>
+        <IBzrxIcon />
+        <span>{formatAmount(ibzrx)}</span>
+      </div>
+      <div className="token" title={bpt.toFixed(18)}>
         <BPTIcon />
-        <span>{formatAmount(bptAmount)}</span>
+        <span>{formatAmount(bpt)}</span>
       </div>
     </li>
   )

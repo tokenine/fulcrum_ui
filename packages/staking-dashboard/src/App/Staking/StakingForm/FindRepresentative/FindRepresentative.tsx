@@ -34,8 +34,9 @@ export function FindRepresentative({ vm }: { vm: StakingFormVM }) {
         </div>
         <ul>
           <SimpleBar style={{ maxHeight: '50vh' }} autoHide={false}>
-            {vm.repFilteredList.map((rep) => (
+            {vm.repFilteredList.map((rep, index) => (
               <FindRepresentativeItem
+                index={index}
                 key={rep.wallet}
                 representative={rep}
                 onRepClick={() => vm.selectNonTopRep(rep.wallet)}

@@ -7,8 +7,11 @@ import Representatives from './Representatives'
 import Rewards from './Rewards'
 import UserBalances from './UserBalances'
 import TransactionStatus from './TransactionStatus'
+import sleep from 'bard-instruments/lib/async/sleep'
+import WalletUpdate, { ITokenAmounts } from './WalletUpdate'
+import errorUtils from 'app-lib/errorUtils'
 
-type stakingStoreProp = 'transactionStatus' | 'stakingError'
+type stakingStoreProp = 'transactionStatus' | 'stakingError' | 'stakingPending' | 'walletUpdate'
 
 export default class StakingStore {
   public rootStore: RootStore
@@ -19,8 +22,10 @@ export default class StakingStore {
   public etherscanURL = ''
   public transactionStatus: TransactionStatus
   public stakingError: Error | null = null
+  public stakingPending = false
+  public walletUpdate: WalletUpdate | null = null
 
-  public get error () {
+  public get error() {
     return this.stakingError || this.userBalances.error || this.rewards.error
   }
 
@@ -48,31 +53,130 @@ export default class StakingStore {
     this.rewards.error = null
   }
 
-  public async stake(
-    tokenToStake: { bzrx: BigNumber; vbzrx: BigNumber; bpt: BigNumber },
-    repAddress: string
-  ) {
+  public async stake(tokenAmounts: {
+    bzrx: BigNumber
+    vbzrx: BigNumber
+    ibzrx: BigNumber
+    bpt: BigNumber
+  }) {
     try {
-      if (!stakingUtils.verifyStake(this.userBalances.wallet, tokenToStake)) {
+      if (!stakingUtils.verifyStake(this.userBalances.wallet, tokenAmounts)) {
         throw new Error('Staking amounts are invalid. Maybe trying to stake more than possible.')
       }
-      if (!stakingUtils.isValidRepAddress(repAddress)) {
-        throw new Error(`Invalid rep address "${repAddress}"`)
-      }
-      return this.stakingProvider.stakeTokens(tokenToStake, repAddress)
+      this.assign({ stakingPending: true, stakingError: null })
+      const {result} = this.stakingProvider.stake(tokenAmounts)
+      await result
+      this.userBalances.staked.add(tokenAmounts)
+      this.userBalances.wallet.substract(tokenAmounts)
     } catch (err) {
-      this.set('stakingError', err)
-      throw err // Rethrowing for now, until we have proper error handling for users
+      this.set('stakingError', errorUtils.decorateError(err, {title: 'Could not stake'}))
+      throw err
+    } finally {
+      this.set('stakingPending', false)
     }
   }
 
+  public async unstake(tokenAmounts: {
+    bzrx: BigNumber
+    vbzrx: BigNumber
+    ibzrx: BigNumber
+    bpt: BigNumber
+  }) {
+    try {
+      if (!stakingUtils.verifyStake(this.userBalances.staked, tokenAmounts)) {
+        throw new Error('Staking amounts are invalid. Maybe trying to unstake more than possible.')
+      }
+      this.assign({ stakingPending: true, stakingError: null })
+      await this.stakingProvider.unstakeTokens(tokenAmounts)
+      this.userBalances.wallet.add(tokenAmounts)
+      this.userBalances.staked.substract(tokenAmounts)
+    } catch (err) {
+      this.set('stakingError', errorUtils.decorateError(err, {title: 'Could not unstake'}))
+      throw err
+    } finally {
+      this.set('stakingPending', false)
+    }
+  }
+
+  public async unstakeAll() {
+    this.set('stakingError', null)
+    try {
+      await this.stakingProvider.unstakeAll()
+    } catch (err) {
+      this.set('stakingError', errorUtils.decorateError(err, {title: 'Could not unstake'}))
+      throw err
+    }
+  }
+
+  /**
+   * Meant to be called when provider changes
+   */
   public async syncData() {
-    this.representatives.updateAll().catch((err) => {
+    if (this.rootStore.web3Connection.isConnected) {
+      // TODO: Representatives deactivated until DAO
+      // this.representatives.updateAll().catch((err) => {
+      //   this.set('stakingError', err)
+      //   console.error(err)
+      // })
+      await this.userBalances.getUserBalances()
+      await sleep(1000)
+      await this.rewards.getRewards()
+    } else {
+      this.userBalances.clearBalances()
+      this.rewards.clearBalances()
+    }
+  }
+
+  /**
+   * Updates the user wallet model and sets a new wallet update diff.
+   * (eg: useful to notify wallet change)
+   * @param diff Amounts of tokens that are added or removed from the wallet
+   */
+  public updateUserWallet(diff: ITokenAmounts[]) {
+    const { wallet } = this.userBalances
+    const amounts = diff.reduce(
+      (acc, tokenAmount) => {
+        acc.from.push({ token: tokenAmount.token, amount: wallet[tokenAmount.token] })
+        acc.to.push({
+          token: tokenAmount.token,
+          amount: wallet[tokenAmount.token].plus(tokenAmount.amount)
+        })
+        return acc
+      },
+      { from: [] as ITokenAmounts[], to: [] as ITokenAmounts[], diff: diff }
+    )
+    const walletUpdate = new WalletUpdate(amounts)
+    this.walletUpdate = walletUpdate
+  }
+
+  /**
+   * Claim staking rewards and update user balances
+   */
+  public async claimStakingRewards(shouldRestake: boolean = false) {
+    try {
+      const claimed = await this.rewards.claimStakingRewards(shouldRestake)
+      this.updateUserWallet([
+        { token: 'bzrx', amount: claimed.bzrx },
+        { token: 'crv', amount: claimed.stableCoin }
+      ])
+      this.userBalances.wallet.add({ bzrx: claimed.bzrx, crv: claimed.stableCoin })
+      return this.userBalances.getUserBalances()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  /**
+   * Claim rebate rewards and update user balances
+   */
+  public async claimRebateRewards() {
+    try {
+      await this.rewards.claimRebateRewards()
+      return this.userBalances.getUserBalances()
+    } catch (err) {
       this.set('stakingError', err)
       console.error(err)
-    })
-    await this.userBalances.getUserBalances()
-    await this.rewards.getRewards()
+    }
   }
 
   public init() {
@@ -80,6 +184,20 @@ export default class StakingStore {
     // when user goes to the staking page
     const sp = this.stakingProvider
     sp.on('ProviderChanged', this.syncData)
+
+    // setTimeout(() => {
+    //   const walletUpdate = new WalletUpdate({
+    //     from: [
+    //       { token: 'bzrx', amount: new BigNumber(10) },
+    //       { token: 'crv', amount: new BigNumber(10) }
+    //     ],
+    //     to: [
+    //       { token: 'bzrx', amount: new BigNumber(100) },
+    //       { token: 'crv', amount: new BigNumber(100) }
+    //     ]
+    //   })
+    //   this.set('walletUpdate', walletUpdate)
+    // }, 10000)
   }
 
   constructor(rootStore: RootStore) {
@@ -87,7 +205,7 @@ export default class StakingStore {
     this.rootStore = rootStore
     this.stakingProvider = stakingProvider
     this.representatives = new Representatives(stakingProvider)
-    this.rewards = new Rewards(stakingProvider)
+    this.rewards = new Rewards(stakingProvider, this)
     this.userBalances = new UserBalances(stakingProvider)
     this.transactionStatus = new TransactionStatus(stakingProvider)
     mobx.makeAutoObservable(this, undefined, { autoBind: true, deep: false })
