@@ -11,7 +11,7 @@ export default class AppVM {
   public pending = false
   public headerMenu = new DialogVM()
   public providerMenu = new DialogVM()
-  public section: 'dao' | 'stake' | 'rewards' = 'stake'
+  public section: 'dao' | 'stake' | 'rewards' | 'governance' = 'stake'
   private stopAutoHidingProviderMenu: mobx.IReactionDisposer | null = null
   private stopAutoSettingBodyOverflow: mobx.IReactionDisposer | null = null
 
@@ -29,18 +29,18 @@ export default class AppVM {
     Object.assign(this, props)
   }
 
-  public connect (providerType: ProviderType) {
+  public connect(providerType: ProviderType) {
     this.providerMenu.hide()
     this.rootStore.web3Connection.connect(providerType)
   }
 
-  public disconnect () {
+  public disconnect() {
     this.providerMenu.hide()
     this.rootStore.web3Connection.disconnect()
   }
 
   public init() {
-    const {web3Connection} = this.rootStore
+    const { web3Connection } = this.rootStore
     this.stopAutoHidingProviderMenu = mobx.reaction(
       () => web3Connection.providerIsChanging,
       (isChanging) => {
