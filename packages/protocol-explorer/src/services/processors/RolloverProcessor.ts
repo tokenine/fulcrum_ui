@@ -1,7 +1,7 @@
 import { BigNumber } from '@0x/utils'
 import Asset from 'bzx-common/src/assets/Asset'
 import { RequestTask } from '../../domain/RequestTask'
-import { RolloverRequest } from '../../domain/RolloverRequest'
+import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 
 import { ExplorerProvider } from '../ExplorerProvider'
 

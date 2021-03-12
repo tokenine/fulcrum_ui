@@ -2,7 +2,7 @@ import { EventEmitter } from 'events'
 import { TasksQueueEvents } from '../services/events/TasksQueueEvents'
 import { LiquidationRequest } from './LiquidationRequest'
 import { RequestStatus } from './RequestStatus'
-import { RolloverRequest } from './RolloverRequest'
+import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 
 export class RequestTask {
   private eventEmitter: EventEmitter | null = null

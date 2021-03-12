@@ -48,7 +48,7 @@ import { LiquidationRequest } from '../domain/LiquidationRequest'
 import { Platform } from '../domain/Platform'
 import { RequestStatus } from '../domain/RequestStatus'
 import { RequestTask } from '../domain/RequestTask'
-import { RolloverRequest } from '../domain/RolloverRequest'
+import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 import { TasksQueue } from '../services/TasksQueue'
 import { TasksQueueEvents } from './events/TasksQueueEvents'
 

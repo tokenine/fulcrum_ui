@@ -1,7 +1,7 @@
 import React, { Component, RefObject } from 'react'
 import { BorrowRequestAwaiting } from '../domain/BorrowRequestAwaiting'
 import { IBorrowedFundsState } from '../domain/IBorrowedFundsState'
-import { RolloverRequest } from '../domain/RolloverRequest'
+import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 import { TorqueProvider } from '../services/TorqueProvider'
 import { BorrowedFundsAwaitingListItem } from './BorrowedFundsAwaitingListItem'
 import { BorrowedFundsListItem } from './BorrowedFundsListItem'

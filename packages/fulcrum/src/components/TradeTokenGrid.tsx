@@ -9,7 +9,7 @@ import TradeTokenGridHeader from './TradeTokenGridHeader'
 import { ITradeTokenGridRowProps, TradeTokenGridRow } from './TradeTokenGridRow'
 
 import '../styles/components/trade-token-grid.scss'
-import { RolloverRequest } from '../domain/RolloverRequest'
+import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 
 export interface ITradeTokenGridProps {
   isMobileMedia: boolean

@@ -63,7 +63,7 @@ import {
 import { ProviderTypeDictionary } from '../domain/ProviderTypeDictionary'
 import { IBorrowedFundsState } from '../domain/IBorrowedFundsState'
 import { ILoanParams } from '../domain/ILoanParams'
-import { RolloverRequest } from '../domain/RolloverRequest'
+import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 import { IExtendState } from '../domain/IExtendState'
 import { IExtendEstimate } from '../domain/IExtendEstimate'
 

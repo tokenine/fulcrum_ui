@@ -1,23 +1,20 @@
 import { EventEmitter } from 'events'
-import { TasksQueueEvents } from '../services/events/TasksQueueEvents'
-import { LendRequest } from './LendRequest'
-import { RequestStatus } from './RequestStatus'
-import { TradeRequest } from './TradeRequest'
-import { ManageCollateralRequest } from './ManageCollateralRequest'
-import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
+import TasksQueueEvents from './TasksQueueEvents'
+import RequestStatus from 'bzx-common/src/domain/RequestStatus'
 
 export class RequestTask {
   private eventEmitter: EventEmitter | null = null
 
-  public readonly request: LendRequest | TradeRequest | ManageCollateralRequest | RolloverRequest
+  public readonly request: any
   public status: RequestStatus
   public steps: string[]
   public stepCurrent: number
   public txHash: string | null
   public error: Error | null
-  static FAILED: RequestStatus
 
-  constructor(request: LendRequest | TradeRequest | ManageCollateralRequest | RolloverRequest) {
+  constructor(
+    request: any
+  ) {
     this.request = request
     this.status = RequestStatus.AWAITING
     this.steps = ['Preparing processing...']
@@ -53,7 +50,6 @@ export class RequestTask {
 
   public processingStepNext() {
     this.stepCurrent++
-
     if (this.eventEmitter) {
       this.eventEmitter.emit(TasksQueueEvents.TaskChanged)
     }
@@ -64,8 +60,8 @@ export class RequestTask {
     this.status = isSuccessful
       ? RequestStatus.DONE
       : skipGas
-      ? RequestStatus.FAILED_SKIPGAS
-      : RequestStatus.FAILED
+        ? RequestStatus.FAILED_SKIPGAS
+        : RequestStatus.FAILED
 
     if (this.eventEmitter) {
       this.eventEmitter.emit(TasksQueueEvents.TaskChanged)

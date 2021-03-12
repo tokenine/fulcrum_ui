@@ -45,7 +45,7 @@ import {
   RefinanceData,
 } from '../domain/RefinanceData'
 import { RepayLoanRequest } from '../domain/RepayLoanRequest'
-import { RolloverRequest } from '../domain/RolloverRequest'
+import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 import Web3ConnectionFactory from 'bzx-common/src/services/Web3ConnectionFactory'
 import { BorrowRequestAwaitingStore } from './BorrowRequestAwaitingStore'
 import ContractsSource from 'bzx-common/src/contracts/ContractsSource'

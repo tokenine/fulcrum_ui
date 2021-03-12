@@ -6,7 +6,7 @@ import { ManageCollateralRequest } from '../domain/ManageCollateralRequest'
 
 import '../styles/components/inner-own-token-grid.scss'
 import { IOwnTokenGridRowProps } from './OwnTokenGridRow'
-import { RolloverRequest } from '../domain/RolloverRequest'
+import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 import { PositionType } from 'src/domain/PositionType'
 
 export interface IInnerOwnTokenGridProps {

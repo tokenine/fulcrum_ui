@@ -5,7 +5,7 @@ import { ExtendLoanRequest } from './ExtendLoanRequest'
 import { ManageCollateralRequest } from './ManageCollateralRequest'
 import { RepayLoanRequest } from './RepayLoanRequest'
 import { RequestStatus } from './RequestStatus'
-import { RolloverRequest } from './RolloverRequest'
+import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 
 export class RequestTask {
   private eventEmitter: EventEmitter | null = null
