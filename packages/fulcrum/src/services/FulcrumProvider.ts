@@ -1,40 +1,34 @@
-import { Web3ProviderEngine } from '@0x/subproviders'
+import { AbstractConnector } from '@web3-react/abstract-connector'
 import { BigNumber } from '@0x/utils'
-import { Web3Wrapper } from '@0x/web3-wrapper'
 import { EventEmitter } from 'events'
-import Asset from 'bzx-common/src/assets/Asset'
-
-import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
-
-import { IPriceDataPoint } from '../domain/IPriceDataPoint'
-import { IWeb3ProviderSettings } from '../domain/IWeb3ProviderSettings'
+import { ExtendLoanRequest } from '../domain/ExtendLoanRequest'
+import { FulcrumProviderEvents } from './events/FulcrumProviderEvents'
 import { ICollateralChangeEstimate } from '../domain/ICollateralChangeEstimate'
 import { ICollateralManagementParams } from '../domain/ICollateralManagementParams'
+import { IPriceDataPoint } from '../domain/IPriceDataPoint'
+import { IWeb3ProviderSettings } from '../domain/IWeb3ProviderSettings'
 import { LendRequest } from '../domain/LendRequest'
+import { LendTransactionMinedEvent } from './events/LendTransactionMinedEvent'
 import { LendType } from '../domain/LendType'
 import { ManageCollateralRequest } from '../domain/ManageCollateralRequest'
-import { ExtendLoanRequest } from '../domain/ExtendLoanRequest'
 import { PositionType } from '../domain/PositionType'
 import { ProviderType } from '../domain/ProviderType'
-import { RequestStatus } from '../domain/RequestStatus'
-import { RequestTask } from '../domain/RequestTask'
+import { RequestStatus, RequestTask, TasksQueue, TasksQueueEvents } from 'app-lib/tasksQueue'
 import { ReserveDetails } from '../domain/ReserveDetails'
 import { TradeRequest } from '../domain/TradeRequest'
 import { TradeTokenKey } from '../domain/TradeTokenKey'
 import { TradeType } from '../domain/TradeType'
-import Web3ConnectionFactory from 'bzx-common/src/services/Web3ConnectionFactory'
-import { ProviderChangedEvent } from '../services/events/ProviderChangedEvent'
+import { Web3ProviderEngine } from '@0x/subproviders'
+import { Web3Wrapper } from '@0x/web3-wrapper'
+import appConfig from 'bzx-common/src/config/appConfig'
+import Asset from 'bzx-common/src/assets/Asset'
+import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
+import configProviders from 'bzx-common/src/config/providers'
 import ContractsSource from 'bzx-common/src/contracts/ContractsSource'
-import { FulcrumProviderEvents } from './events/FulcrumProviderEvents'
-import { LendTransactionMinedEvent } from './events/LendTransactionMinedEvent'
-import { TasksQueueEvents } from './events/TasksQueueEvents'
-import { TasksQueue } from './TasksQueue'
-
+import ProviderChangedEvent from 'bzx-common/src/services/ProviderChangedEvent'
+import ProviderTypeDictionary from 'bzx-common/src/domain/ProviderTypeDictionary'
 import TagManager from 'react-gtm-module'
-import configProviders from 'bzx-common/src/config/providers.ts'
-
-import { AbstractConnector } from '@web3-react/abstract-connector'
-
+import Web3ConnectionFactory from 'bzx-common/src/services/Web3ConnectionFactory'
 import Web3Utils from 'web3-utils'
 
 import {
@@ -60,36 +54,14 @@ import {
   getWithdrawCollateralHistory,
 } from 'bzx-common/src/utils'
 
-import { ProviderTypeDictionary } from '../domain/ProviderTypeDictionary'
 import { IBorrowedFundsState } from '../domain/IBorrowedFundsState'
 import { ILoanParams } from '../domain/ILoanParams'
 import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
 import { IExtendState } from '../domain/IExtendState'
 import { IExtendEstimate } from '../domain/IExtendEstimate'
 
-const isMainnetProd =
-  process.env.NODE_ENV &&
-  process.env.NODE_ENV !== 'development' &&
-  process.env.REACT_APP_ETH_NETWORK === 'mainnet'
-
-const getNetworkIdByString = (networkName: string | undefined) => {
-  switch (networkName) {
-    case 'mainnet':
-      return 1
-    case 'ropsten':
-      return 3
-    case 'rinkeby':
-      return 4
-    case 'kovan':
-      return 42
-    case 'bsc':
-      return 56
-    default:
-      return 0
-  }
-}
 const networkName = process.env.REACT_APP_ETH_NETWORK
-const initialNetworkId = getNetworkIdByString(networkName)
+const initialNetworkId = appConfig.appNetworkId
 
 export class FulcrumProvider {
   public static Instance: FulcrumProvider
@@ -164,7 +136,7 @@ export class FulcrumProvider {
     const storedProvider: any = FulcrumProvider.getLocalstorageItem('providerType')
     const providerType: ProviderType | null = (storedProvider as ProviderType) || null
 
-    this.web3ProviderSettings = FulcrumProvider.getWeb3ProviderSettings(initialNetworkId)
+    this.web3ProviderSettings = appConfig.web3ProviderSettings
     // setting up readonly provider only when user wasn't connected earlier with the wallet
     providerType === null ||
       (providerType === ProviderType.None &&
@@ -1393,42 +1365,6 @@ export class FulcrumProvider {
     return result
   }
 
-  public gasPrice = async (): Promise<BigNumber> => {
-    if (networkName === 'kovan') return new BigNumber(1).multipliedBy(10 ** 9) // 1 gwei
-    if (networkName === 'bsc') {
-      // always 10 gwei
-      return new BigNumber(10).multipliedBy(10 ** 9)
-    }
-    let result = new BigNumber(1000).multipliedBy(10 ** 9) // upper limit 120 gwei
-    const lowerLimit = new BigNumber(3).multipliedBy(10 ** 9) // lower limit 3 gwei
-
-    const url = `https://ethgasstation.info/json/ethgasAPI.json`
-    try {
-      const response = await fetch(url)
-      const jsonData = await response.json()
-      // console.log(jsonData);
-      if (jsonData.average) {
-        // ethgasstation values need divide by 10 to get gwei
-        const gasPriceAvg = new BigNumber(jsonData.average).multipliedBy(10 ** 8)
-        const gasPriceSafeLow = new BigNumber(jsonData.safeLow).multipliedBy(10 ** 8)
-        if (gasPriceAvg.lt(result)) {
-          result = gasPriceAvg
-        } else if (gasPriceSafeLow.lt(result)) {
-          result = gasPriceSafeLow
-        }
-      }
-    } catch (error) {
-      // console.log(error);
-      result = new BigNumber(500).multipliedBy(10 ** 9) // error default 60 gwei
-    }
-
-    if (result.lt(lowerLimit)) {
-      result = lowerLimit
-    }
-
-    return result
-  }
-
   public checkCollateralApprovalForLend = async (asset: Asset): Promise<boolean> => {
     let maybeNeedsApproval = false
     let account: string | undefined = undefined
@@ -1815,43 +1751,6 @@ export class FulcrumProvider {
 
   //   return requestAmount.multipliedBy(request.leverage);
   // }
-
-  public static getWeb3ProviderSettings(networkId: number): IWeb3ProviderSettings {
-    // tslint:disable-next-line:one-variable-per-declaration
-    let networkName, etherscanURL
-    switch (networkId) {
-      case 1:
-        networkName = 'mainnet'
-        etherscanURL = 'https://etherscan.io/'
-        break
-      case 3:
-        networkName = 'ropsten'
-        etherscanURL = 'https://ropsten.etherscan.io/'
-        break
-      case 4:
-        networkName = 'rinkeby'
-        etherscanURL = 'https://rinkeby.etherscan.io/'
-        break
-      case 42:
-        networkName = 'kovan'
-        etherscanURL = 'https://kovan.etherscan.io/'
-        break
-      case 56:
-        networkName = 'bsc'
-        etherscanURL = 'https://bscscan.com/'
-        break
-      default:
-        networkId = 0
-        networkName = 'local'
-        etherscanURL = ''
-        break
-    }
-    return {
-      networkId,
-      networkName,
-      etherscanURL,
-    }
-  }
 
   public async getAssetTokenBalanceOfUser(asset: Asset, account?: string): Promise<BigNumber> {
     let result: BigNumber = new BigNumber(0)
@@ -2367,10 +2266,7 @@ export class FulcrumProvider {
     );
 
     return swapRates[0][0];*/
-    return this.getSwapRate(
-      asset,
-      networkName === 'bsc' ? Asset.BUSD : isMainnetProd ? Asset.DAI : Asset.USDC
-    )
+    return this.getSwapRate(asset, appConfig.tokenForUsdSwapRate)
   }
 
   private getGoodSourceAmountOfAsset(asset: Asset): BigNumber {
@@ -2716,8 +2612,8 @@ console.log(err, added);
         await this.addTokenToMetaMask(task)
 
         if (
-          (process.env.REACT_APP_ETH_NETWORK === 'mainnet' && taskRequest.asset === Asset.ETH) ||
-          (process.env.REACT_APP_ETH_NETWORK === 'bsc' && taskRequest.asset === Asset.BNB)
+          (appConfig.isMainnet && taskRequest.asset === Asset.ETH) ||
+          (appConfig.isBsc && taskRequest.asset === Asset.BNB)
         ) {
           const { LendEthProcessor } = await import('./processors/LendEthProcessor')
           const processor = new LendEthProcessor()
@@ -2733,8 +2629,8 @@ console.log(err, added);
         }
       } else {
         if (
-          (process.env.REACT_APP_ETH_NETWORK === 'mainnet' && taskRequest.asset === Asset.ETH) ||
-          (process.env.REACT_APP_ETH_NETWORK === 'bsc' && taskRequest.asset === Asset.BNB)
+          (appConfig.isMainnet && taskRequest.asset === Asset.ETH) ||
+          (appConfig.isBsc && taskRequest.asset === Asset.BNB)
         ) {
           const { UnlendEthProcessor } = await import('./processors/UnlendEthProcessor')
           const processor = new UnlendEthProcessor()
@@ -3131,7 +3027,7 @@ console.log(err, added);
                 ],
               },
             }
-            isMainnetProd && TagManager.dataLayer(tagManagerArgs)
+            appConfig.isGTMEnabled && TagManager.dataLayer(tagManagerArgs)
             this.eventEmitter.emit(
               FulcrumProviderEvents.LendTransactionMined,
               new LendTransactionMinedEvent(request.asset, txHash)
@@ -3149,7 +3045,7 @@ console.log(err, added);
                 ],
               },
             }
-            isMainnetProd && TagManager.dataLayer(tagManagerArgs)
+            appConfig.isGTMEnabled && TagManager.dataLayer(tagManagerArgs)
           } else if (request instanceof TradeRequest) {
             const tagManagerArgs = {
               dataLayer: {
@@ -3163,7 +3059,7 @@ console.log(err, added);
                 ],
               },
             }
-            isMainnetProd && TagManager.dataLayer(tagManagerArgs)
+            appConfig.isGTMEnabled && TagManager.dataLayer(tagManagerArgs)
           }
         }
       } else {
@@ -3207,9 +3103,8 @@ console.log(err, added);
     //: FulcrumProvider.ZERO_ADDRESS
 
     const sendAmountForValue =
-      (process.env.REACT_APP_ETH_NETWORK === 'mainnet' &&
-        (depositToken === Asset.WETH || depositToken === Asset.ETH)) ||
-      (process.env.REACT_APP_ETH_NETWORK === 'bsc' && depositToken === Asset.BNB)
+      (appConfig.isMainnet && (depositToken === Asset.WETH || depositToken === Asset.ETH)) ||
+      (appConfig.isBsc && depositToken === Asset.BNB)
         ? amountInBaseUnits
         : new BigNumber(0)
 
@@ -3297,10 +3192,7 @@ console.log(err, added);
   }
 
   public isETHAsset = (asset: Asset): boolean => {
-    return (
-      (process.env.REACT_APP_ETH_NETWORK === 'mainnet' && asset === Asset.ETH) ||
-      (process.env.REACT_APP_ETH_NETWORK === 'bsc' && asset === Asset.BNB)
-    ) // || asset === Asset.WETH;
+    return (appConfig.isMainnet && asset === Asset.ETH) || (appConfig.isBsc && asset === Asset.BNB) // || asset === Asset.WETH;
   }
 
   public getLoanExtendParams = async (

@@ -3,7 +3,7 @@ import React, { PureComponent } from 'react'
 import Modal from 'react-modal'
 
 import { FulcrumProviderEvents } from '../services/events/FulcrumProviderEvents'
-import { ProviderChangedEvent } from '../services/events/ProviderChangedEvent'
+import ProviderChangedEvent from 'bzx-common/src/services/ProviderChangedEvent'
 import { FulcrumProvider } from '../services/FulcrumProvider'
 
 import { HistoryTokenGrid } from '../components/HistoryTokenGrid'
@@ -19,7 +19,7 @@ import { ExtendLoanForm } from '../components/ExtendLoanForm'
 import Asset from 'bzx-common/src/assets/Asset'
 
 import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
-import { TRADE_PAIRS } from 'bzx-common/src/config/appConfig'
+import { tradePairs } from 'bzx-common/src/config/appConfig'
 import {
   CloseWithSwapEvent,
   DepositCollateralEvent,
@@ -40,7 +40,7 @@ import { TradeType } from '../domain/TradeType'
 import loansWithOldOpenPriceFormat from '../config/loansWithOldOpenPriceFormat'
 import '../styles/pages/_trade-page.scss'
 import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
-import { InfoBlock } from '../components/InfoBlock'
+import InfoBlock from 'bzx-common/src/shared-components/InfoBlock'
 import { StatsTokenGrid } from '../components/StatsTokenGrid'
 import TVChartComingSoon from '../components/TVChartComingSoon'
 
@@ -274,7 +274,7 @@ export default class TradePage extends PureComponent<ITradePageProps, ITradePage
                 </InfoBlock>
               )}
             <TokenGridTabs
-              tradePairs={TRADE_PAIRS}
+              tradePairs={tradePairs}
               baseTokens={this.baseTokens}
               quoteTokens={this.quoteTokens}
               selectedMarket={this.state.selectedMarket}
@@ -616,12 +616,12 @@ export default class TradePage extends PureComponent<ITradePageProps, ITradePage
       : await FulcrumProvider.Instance.getKyberSwapRate(loan.collateralAsset, loan.loanAsset)
 
     let positionType
-    const possiblePairs = TRADE_PAIRS.filter(
+    const possiblePairs = tradePairs.filter(
       (p) =>
         (p.baseToken === loan.loanAsset && p.quoteToken === loan.collateralAsset) ||
         (p.baseToken === loan.collateralAsset && p.quoteToken === loan.loanAsset)
     )
-    if (TRADE_PAIRS.length > 0 && possiblePairs && possiblePairs.length > 0) {
+    if (tradePairs.length > 0 && possiblePairs && possiblePairs.length > 0) {
       if (possiblePairs.length > 1) {
         console.error(
           "The position fits to more than one pair. Couldn't treat it exactly as LONG/SHORT"

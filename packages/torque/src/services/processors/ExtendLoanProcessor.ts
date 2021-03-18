@@ -1,10 +1,10 @@
+import ethGasStation from 'bzx-common/src/lib/apis/ethGasStation'
 import { BigNumber } from '@0x/utils'
 import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
-import { RequestTask } from '../../domain/RequestTask'
+import { RequestTask } from 'app-lib/tasksQueue'
 import { TorqueProvider } from '../TorqueProvider'
 import { erc20Contract } from 'bzx-common/src/contracts/typescript-wrappers/erc20'
 import { ExtendLoanRequest } from '../../domain/ExtendLoanRequest'
-import Asset from 'bzx-common/src/assets/Asset'
 
 export class ExtendLoanProcessor {
   public run = async (task: RequestTask, account: string, skipGas: boolean) => {
@@ -127,7 +127,7 @@ export class ExtendLoanProcessor {
           from: account,
           value: isETHBorrowAsset ? depositAmountInBaseUnits : undefined,
           gas: !gasAmountBN.eq(0) ? gasAmountBN.toString() : '3000000',
-          gasPrice: await TorqueProvider.Instance.gasPrice(),
+          gasPrice: await ethGasStation.getGasPrice(),
         })
       task.setTxHash(txHash)
     } catch (e) {

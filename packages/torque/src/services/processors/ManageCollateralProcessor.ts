@@ -1,7 +1,8 @@
+import ethGasStation from 'bzx-common/src/lib/apis/ethGasStation'
 import { BigNumber } from '@0x/utils'
 import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
 import { ManageCollateralRequest } from '../../domain/ManageCollateralRequest'
-import { RequestTask } from '../../domain/RequestTask'
+import { RequestTask } from 'app-lib/tasksQueue'
 import { TorqueProvider } from '../TorqueProvider'
 import { erc20Contract } from 'bzx-common/src/contracts/typescript-wrappers/erc20'
 import Asset from 'bzx-common/src/assets/Asset'
@@ -132,7 +133,7 @@ export class ManageCollateralProcessor {
             from: account,
             value: isETHCollateralAsset ? collateralAmountInBaseUnitsValue : undefined,
             gas: gasAmountBN ? gasAmountBN.toString() : '3000000',
-            gasPrice: await TorqueProvider.Instance.gasPrice(),
+            gasPrice: await ethGasStation.getGasPrice(),
           })
         task.setTxHash(txHash)
       } catch (e) {
@@ -161,7 +162,7 @@ export class ManageCollateralProcessor {
           .sendTransactionAsync({
             from: account,
             gas: gasAmountBN ? gasAmountBN.toString() : '3000000',
-            gasPrice: await TorqueProvider.Instance.gasPrice(),
+            gasPrice: await ethGasStation.getGasPrice(),
           })
         task.setTxHash(txHash)
       } catch (e) {

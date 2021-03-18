@@ -1,95 +1,68 @@
-import { BigNumber } from '@0x/utils'
-import { Web3Wrapper } from '@0x/web3-wrapper'
-import { EventEmitter } from 'events'
-
-import Web3Utils from 'web3-utils'
-
-import constantAddress from '../config/constant.json'
-import { cdpManagerContract } from 'bzx-common/src/contracts/typescript-wrappers/cdpManager'
-import { CompoundBridgeContract } from 'bzx-common/src/contracts/typescript-wrappers/CompoundBridge'
-import { CompoundComptrollerContract } from 'bzx-common/src/contracts/typescript-wrappers/CompoundComptroller'
-import { dsProxyJsonContract } from 'bzx-common/src/contracts/typescript-wrappers/dsProxyJson'
-// import rawEncode  from "ethereumjs-abi";
-import { erc20Contract } from 'bzx-common/src/contracts/typescript-wrappers/erc20'
-import { GetCdpsContract } from 'bzx-common/src/contracts/typescript-wrappers/getCdps'
-import { instaRegistryContract } from 'bzx-common/src/contracts/typescript-wrappers/instaRegistry'
-import { makerBridgeContract } from 'bzx-common/src/contracts/typescript-wrappers/makerBridge'
-import { proxyRegistryContract } from 'bzx-common/src/contracts/typescript-wrappers/proxyRegistry'
-import { saiToDAIBridgeContract } from 'bzx-common/src/contracts/typescript-wrappers/saiToDaiBridge'
-import { SoloContract } from 'bzx-common/src/contracts/typescript-wrappers/solo'
-import { SoloBridgeContract } from 'bzx-common/src/contracts/typescript-wrappers/SoloBridge'
-
-import { vatContract } from 'bzx-common/src/contracts/typescript-wrappers/vat'
-import Asset from 'bzx-common/src/assets/Asset'
-import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
-import { BorrowRequest } from '../domain/BorrowRequest'
-import { BorrowRequestAwaiting } from '../domain/BorrowRequestAwaiting'
-import { ExtendLoanRequest } from '../domain/ExtendLoanRequest'
-import { IBorrowedFundsState } from '../domain/IBorrowedFundsState'
-import { IDepositEstimate } from '../domain/IDepositEstimate'
-import { IBorrowEstimate } from '../domain/IBorrowEstimate'
-import { ICollateralChangeEstimate } from '../domain/ICollateralChangeEstimate'
-import { ICollateralManagementParams } from '../domain/ICollateralManagementParams'
-import { IExtendEstimate } from '../domain/IExtendEstimate'
-import { IExtendState } from '../domain/IExtendState'
-import { ILoanParams } from '../domain/ILoanParams'
-import { IRepayEstimate } from '../domain/IRepayEstimate'
-import { IRepayState } from '../domain/IRepayState'
-import { IWeb3ProviderSettings } from '../domain/IWeb3ProviderSettings'
-import { ManageCollateralRequest } from '../domain/ManageCollateralRequest'
-import { ProviderType } from '../domain/ProviderType'
 import {
   IRefinanceLoan,
   IRefinanceToken,
   RefinanceCdpData,
   RefinanceData,
 } from '../domain/RefinanceData'
+import { AbstractConnector } from '@web3-react/abstract-connector'
+import { BigNumber } from '@0x/utils'
+import { BorrowRequest } from '../domain/BorrowRequest'
+import { BorrowRequestAwaiting } from '../domain/BorrowRequestAwaiting'
+import { BorrowRequestAwaitingStore } from './BorrowRequestAwaitingStore'
+import { cdpManagerContract } from 'bzx-common/src/contracts/typescript-wrappers/cdpManager'
+import { CompoundBridgeContract } from 'bzx-common/src/contracts/typescript-wrappers/CompoundBridge'
+import { CompoundComptrollerContract } from 'bzx-common/src/contracts/typescript-wrappers/CompoundComptroller'
+import { dsProxyJsonContract } from 'bzx-common/src/contracts/typescript-wrappers/dsProxyJson'
+import { erc20Contract } from 'bzx-common/src/contracts/typescript-wrappers/erc20'
+import { EventEmitter } from 'events'
+import { ExtendLoanRequest } from '../domain/ExtendLoanRequest'
+import { GetCdpsContract } from 'bzx-common/src/contracts/typescript-wrappers/getCdps'
+import { IBorrowedFundsState } from '../domain/IBorrowedFundsState'
+import { IBorrowEstimate } from '../domain/IBorrowEstimate'
+import { ICollateralChangeEstimate } from '../domain/ICollateralChangeEstimate'
+import { ICollateralManagementParams } from '../domain/ICollateralManagementParams'
+import { IDepositEstimate } from '../domain/IDepositEstimate'
+import { IExtendEstimate } from '../domain/IExtendEstimate'
+import { IExtendState } from '../domain/IExtendState'
+import { ILoanParams } from '../domain/ILoanParams'
+import { instaRegistryContract } from 'bzx-common/src/contracts/typescript-wrappers/instaRegistry'
+import { IRepayEstimate } from '../domain/IRepayEstimate'
+import { IRepayState } from '../domain/IRepayState'
+import { IWeb3ProviderSettings } from '../domain/IWeb3ProviderSettings'
+import { LiquidationEvent } from 'bzx-common/src/domain/events'
+import { makerBridgeContract } from 'bzx-common/src/contracts/typescript-wrappers/makerBridge'
+import { ManageCollateralRequest } from '../domain/ManageCollateralRequest'
+import { ProviderType } from '../domain/ProviderType'
+import { proxyRegistryContract } from 'bzx-common/src/contracts/typescript-wrappers/proxyRegistry'
 import { RepayLoanRequest } from '../domain/RepayLoanRequest'
 import RolloverRequest from 'bzx-common/src/domain/RolloverRequest'
-import Web3ConnectionFactory from 'bzx-common/src/services/Web3ConnectionFactory'
-import { BorrowRequestAwaitingStore } from './BorrowRequestAwaitingStore'
-import ContractsSource from 'bzx-common/src/contracts/ContractsSource'
+import { RequestStatus, RequestTask, TasksQueue, TasksQueueEvents } from 'app-lib/tasksQueue'
+import { saiToDAIBridgeContract } from 'bzx-common/src/contracts/typescript-wrappers/saiToDaiBridge'
+import { SoloBridgeContract } from 'bzx-common/src/contracts/typescript-wrappers/SoloBridge'
+import { SoloContract } from 'bzx-common/src/contracts/typescript-wrappers/solo'
 import { TorqueProviderEvents } from './events/TorqueProviderEvents'
-
-import { AbstractConnector } from '@web3-react/abstract-connector'
-import { ProviderTypeDictionary } from '../domain/ProviderTypeDictionary'
-import { RequestStatus } from '../domain/RequestStatus'
-import { RequestTask } from '../domain/RequestTask'
-import { TasksQueueEvents } from './events/TasksQueueEvents'
-import { TasksQueue } from './TasksQueue'
-import configProviders from 'bzx-common/src/config/providers.ts'
-import { LiquidationEvent } from '../domain/events/LiquidationEvent'
-
-const isMainnetProd =
-  process.env.NODE_ENV &&
-  process.env.NODE_ENV !== 'development' &&
-  process.env.REACT_APP_ETH_NETWORK === 'mainnet'
+import { vatContract } from 'bzx-common/src/contracts/typescript-wrappers/vat'
+import { Web3Wrapper } from '@0x/web3-wrapper'
+import appConfig from 'bzx-common/src/config/appConfig'
+import Asset from 'bzx-common/src/assets/Asset'
+import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
+import configProviders from 'bzx-common/src/config/providers'
+import constantAddress from '../config/constant.json'
+import ContractsSource from 'bzx-common/src/contracts/ContractsSource'
+import ethereumUtils from 'app-lib/ethereumUtils'
+import ProviderTypeDictionary from 'bzx-common/src/domain/ProviderTypeDictionary'
+import Web3ConnectionFactory from 'bzx-common/src/services/Web3ConnectionFactory'
+import Web3Utils from 'web3-utils'
 
 let configAddress: any
-if (process.env.REACT_APP_ETH_NETWORK === 'mainnet') {
+if (appConfig.isMainnet) {
   configAddress = constantAddress.mainnet
 } else {
   configAddress = constantAddress.kovan
 }
 
-const getNetworkIdByString = (networkName: string | undefined) => {
-  switch (networkName) {
-    case 'mainnet':
-      return 1
-    case 'ropsten':
-      return 3
-    case 'rinkeby':
-      return 4
-    case 'kovan':
-      return 42
-    case 'bsc':
-      return 56
-    default:
-      return 0
-  }
-}
-const networkName = process.env.REACT_APP_ETH_NETWORK
-const initialNetworkId = getNetworkIdByString(networkName)
+const networkName = appConfig.appNetwork
+const initialNetworkId = appConfig.appNetworkId
 
 export class TorqueProvider {
   public static Instance: TorqueProvider
@@ -142,11 +115,11 @@ export class TorqueProvider {
     const storedProvider: any = TorqueProvider.getLocalstorageItem('providerType')
     const providerType: ProviderType | null = (storedProvider as ProviderType) || null
 
-    this.web3ProviderSettings = TorqueProvider.getWeb3ProviderSettings(initialNetworkId)
+    this.web3ProviderSettings = appConfig.web3ProviderSettings
     if (!providerType || providerType === ProviderType.None) {
       // TorqueProvider.Instance.isLoading = true;
       // setting up readonly provider
-      this.web3ProviderSettings = TorqueProvider.getWeb3ProviderSettings(initialNetworkId)
+      this.web3ProviderSettings = appConfig.web3ProviderSettings
       Web3ConnectionFactory.setReadonlyProvider().then(() => {
         const web3Wrapper = Web3ConnectionFactory.currentWeb3Wrapper
         const engine = Web3ConnectionFactory.currentWeb3Engine
@@ -267,7 +240,7 @@ export class TorqueProvider {
     let networkId = providerData[3]
     const selectedAccount = providerData[4]
 
-    this.web3ProviderSettings = await TorqueProvider.getWeb3ProviderSettings(networkId)
+    this.web3ProviderSettings = ethereumUtils.getWeb3ProviderSettings(networkId)
     if (this.web3Wrapper) {
       if (this.web3ProviderSettings.networkName !== process.env.REACT_APP_ETH_NETWORK) {
         // TODO: inform the user they are on the wrong network. Make it provider specific (MetaMask, etc)
@@ -275,7 +248,7 @@ export class TorqueProvider {
         this.unsupportedNetwork = true
         canWrite = false // revert back to read-only
         networkId = await this.web3Wrapper.getNetworkIdAsync()
-        this.web3ProviderSettings = await TorqueProvider.getWeb3ProviderSettings(networkId)
+        this.web3ProviderSettings = ethereumUtils.getWeb3ProviderSettings(networkId)
       } else {
         this.unsupportedNetwork = false
       }
@@ -321,43 +294,6 @@ export class TorqueProvider {
       await this.contractsSource.Init()
     }
     TorqueProvider.Instance.isLoading = false
-  }
-
-  public static getWeb3ProviderSettings(networkId: number | null): IWeb3ProviderSettings {
-    // tslint:disable-next-line:one-variable-per-declaration
-    let networkName, etherscanURL
-    switch (networkId) {
-      case 1:
-        networkName = 'mainnet'
-        etherscanURL = 'https://etherscan.io/'
-        break
-      case 3:
-        networkName = 'ropsten'
-        etherscanURL = 'https://ropsten.etherscan.io/'
-        break
-      case 4:
-        networkName = 'rinkeby'
-        etherscanURL = 'https://rinkeby.etherscan.io/'
-        break
-      case 42:
-        networkName = 'kovan'
-        etherscanURL = 'https://kovan.etherscan.io/'
-        break
-      case 56:
-        networkName = 'bsc'
-        etherscanURL = 'https://bscscan.com/'
-        break
-      default:
-        networkId = 0
-        networkName = 'local'
-        etherscanURL = ''
-        break
-    }
-    return {
-      networkId,
-      networkName,
-      etherscanURL,
-    }
   }
 
   public async getAssetTokenBalanceOfUser(asset: Asset): Promise<BigNumber> {
@@ -513,7 +449,7 @@ export class TorqueProvider {
       return new BigNumber(1)
     }
 
-    return this.getSwapRate(asset, isMainnetProd ? Asset.DAI : Asset.USDC)
+    return this.getSwapRate(asset, appConfig.tokenForUsdSwapRate)
   }
 
   public async getSwapRate(
@@ -1609,40 +1545,6 @@ export class TorqueProvider {
     return receipt.status === 1 ? receipt : null;
   }*/
 
-  public gasPrice = async (): Promise<BigNumber> => {
-    if (networkName === 'kovan') return new BigNumber(1).multipliedBy(10 ** 9) // 1 gwei
-    if (networkName === 'bsc') {
-      // always 10 gwei
-      return new BigNumber(10).multipliedBy(10 ** 9)
-    }
-    let result = new BigNumber(1000).multipliedBy(10 ** 9) // upper limit 120 gwei
-    const lowerLimit = new BigNumber(3).multipliedBy(10 ** 9) // lower limit 3 gwei
-
-    const url = `https://ethgasstation.info/json/ethgasAPI.json`
-    try {
-      const response = await fetch(url)
-      const jsonData = await response.json()
-      if (jsonData.average) {
-        // ethgasstation values need divide by 10 to get gwei
-        const gasPriceAvg = new BigNumber(jsonData.average).multipliedBy(10 ** 8)
-        const gasPriceSafeLow = new BigNumber(jsonData.safeLow).multipliedBy(10 ** 8)
-        if (gasPriceAvg.lt(result)) {
-          result = gasPriceAvg
-        } else if (gasPriceSafeLow.lt(result)) {
-          result = gasPriceSafeLow
-        }
-      }
-    } catch (error) {
-      result = new BigNumber(1000).multipliedBy(10 ** 9) // error default 60 gwei
-    }
-
-    if (result.lt(lowerLimit)) {
-      result = lowerLimit
-    }
-
-    return result
-  }
-
   public getLoansList = async (): Promise<IBorrowedFundsState[]> => {
     let result: IBorrowedFundsState[] = []
 
@@ -1682,17 +1584,17 @@ export class TorqueProvider {
       .map((e) => {
         let loanAsset = this.contractsSource!.getAssetFromAddress(e.loanToken)
         loanAsset = this.isETHAsset(loanAsset)
-          ? process.env.REACT_APP_ETH_NETWORK === 'mainnet'
+          ? appConfig.isMainnet
             ? Asset.ETH
-            : process.env.REACT_APP_ETH_NETWORK === 'bsc'
+            : appConfig.isBsc
             ? Asset.BNB
             : loanAsset
           : loanAsset
         let collateralAsset = this.contractsSource!.getAssetFromAddress(e.collateralToken)
         collateralAsset = this.isETHAsset(collateralAsset)
-          ? process.env.REACT_APP_ETH_NETWORK === 'mainnet'
+          ? appConfig.isMainnet
             ? Asset.ETH
-            : process.env.REACT_APP_ETH_NETWORK === 'bsc'
+            : appConfig.isBsc
             ? Asset.BNB
             : collateralAsset
           : collateralAsset
@@ -2161,9 +2063,8 @@ export class TorqueProvider {
 
   public isETHAsset = (asset: Asset): boolean => {
     return (
-      (process.env.REACT_APP_ETH_NETWORK === 'mainnet' &&
-        (asset === Asset.ETH || asset === Asset.WETH)) ||
-      (process.env.REACT_APP_ETH_NETWORK === 'bsc' && (asset === Asset.BNB || asset === Asset.WBNB))
+      (appConfig.isMainnet && (asset === Asset.ETH || asset === Asset.WETH)) ||
+      (appConfig.isBsc && (asset === Asset.BNB || asset === Asset.WBNB))
     )
   }
 

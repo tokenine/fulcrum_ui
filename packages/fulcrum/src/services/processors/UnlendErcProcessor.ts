@@ -1,12 +1,12 @@
+import ethGasStation from 'bzx-common/src/lib/apis/ethGasStation'
 import { BigNumber } from '@0x/utils'
 import { iTokenContract } from 'bzx-common/src/contracts/typescript-wrappers/iTokenContract'
 import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
 
 import { LendRequest } from '../../domain/LendRequest'
-import { RequestTask } from '../../domain/RequestTask'
-import { FulcrumProviderEvents } from '../events/FulcrumProviderEvents'
+
+import { RequestTask } from 'app-lib/tasksQueue'
 import { FulcrumProvider } from '../FulcrumProvider'
-import Asset from 'bzx-common/src/assets/Asset'
 
 export class UnlendErcProcessor {
   public run = async (task: RequestTask, account: string, skipGas: boolean) => {
@@ -76,7 +76,7 @@ export class UnlendErcProcessor {
       txHash = await tokenContract.burn(account, amountInBaseUnits).sendTransactionAsync({
         from: account,
         gas: gasAmountBN.toString(),
-        gasPrice: await FulcrumProvider.Instance.gasPrice(),
+        gasPrice: await ethGasStation.getGasPrice(),
       })
       task.setTxHash(txHash)
     } catch (e) {

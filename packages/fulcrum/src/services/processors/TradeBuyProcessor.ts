@@ -1,13 +1,13 @@
 import { BigNumber } from '@0x/utils'
-import { RequestTask } from '../../domain/RequestTask'
-import { TradeRequest } from '../../domain/TradeRequest'
+import { erc20Contract } from 'bzx-common/src/contracts/typescript-wrappers/erc20'
 import { FulcrumProvider } from '../FulcrumProvider'
 import { PositionType } from '../../domain/PositionType'
+import { RequestTask } from 'app-lib/tasksQueue'
+import { TradeRequest } from '../../domain/TradeRequest'
+import appConfig from 'bzx-common/src/config/appConfig'
 import Asset from 'bzx-common/src/assets/Asset'
-
 import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
-
-import { erc20Contract } from 'bzx-common/src/contracts/typescript-wrappers/erc20'
+import ethGasStation from 'bzx-common/src/lib/apis/ethGasStation'
 
 export class TradeBuyProcessor {
   public run = async (task: RequestTask, account: string, skipGas: boolean) => {
@@ -48,9 +48,9 @@ export class TradeBuyProcessor {
     let assetErc20Address: string | null = ''
     let erc20allowance = new BigNumber(0)
     if (
-      (process.env.REACT_APP_ETH_NETWORK === 'mainnet' &&
+      (appConfig.isMainnet &&
         (taskRequest.depositToken === Asset.WETH || taskRequest.depositToken === Asset.ETH)) ||
-      (process.env.REACT_APP_ETH_NETWORK === 'bsc' && taskRequest.depositToken === Asset.BNB)
+      (appConfig.isBsc && taskRequest.depositToken === Asset.BNB)
     ) {
       task.processingStart([
         'Initializing',
@@ -131,16 +131,16 @@ export class TradeBuyProcessor {
 
     //const depositTokenAddress = FulcrumProvider.Instance.getErc20AddressOfAsset(depositToken);
     const collateralTokenAddress =
-      (process.env.REACT_APP_ETH_NETWORK === 'mainnet' && collateralToken === Asset.ETH) ||
-      (process.env.REACT_APP_ETH_NETWORK === 'bsc' && collateralToken === Asset.BNB)
+      (appConfig.isMainnet && collateralToken === Asset.ETH) ||
+      (appConfig.isBsc && collateralToken === Asset.BNB)
         ? FulcrumProvider.ZERO_ADDRESS
         : FulcrumProvider.Instance.getErc20AddressOfAsset(collateralToken)
     const loanData = '0x'
 
     const sendAmountForValue =
-      (process.env.REACT_APP_ETH_NETWORK === 'mainnet' &&
+      (appConfig.isMainnet &&
         (taskRequest.depositToken === Asset.WETH || taskRequest.depositToken === Asset.ETH)) ||
-      (process.env.REACT_APP_ETH_NETWORK === 'bsc' && taskRequest.depositToken === Asset.BNB)
+      (appConfig.isBsc && taskRequest.depositToken === Asset.BNB)
         ? amountInBaseUnits
         : new BigNumber(0)
 
@@ -210,7 +210,7 @@ export class TradeBuyProcessor {
                 from: account,
                 value: sendAmountForValue,
                 gas: gasAmountBN.toString(),
-                gasPrice: await FulcrumProvider.Instance.gasPrice(),
+                gasPrice: await ethGasStation.getGasPrice(),
               })
           : await tokenContract
               .marginTrade(
@@ -226,7 +226,7 @@ export class TradeBuyProcessor {
                 from: account,
                 value: sendAmountForValue,
                 gas: gasAmountBN.toString(),
-                gasPrice: await FulcrumProvider.Instance.gasPrice(),
+                gasPrice: await ethGasStation.getGasPrice(),
               })
       task.setTxHash(txHash)
     } catch (e) {

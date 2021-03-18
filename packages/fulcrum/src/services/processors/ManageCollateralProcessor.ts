@@ -1,5 +1,7 @@
+import ethGasStation from 'bzx-common/src/lib/apis/ethGasStation'
 import { BigNumber } from '@0x/utils'
-import { RequestTask } from '../../domain/RequestTask'
+
+import { RequestTask } from 'app-lib/tasksQueue'
 import { ManageCollateralRequest } from '../../domain/ManageCollateralRequest'
 
 import AssetsDictionary from 'bzx-common/src/assets/AssetsDictionary'
@@ -139,7 +141,7 @@ export class ManageCollateralProcessor {
             from: account,
             value: isETHCollateralAsset ? collateralAmountInBaseUnitsValue : undefined,
             gas: gasAmountBN.gt(0) ? gasAmountBN.toString() : '3000000',
-            gasPrice: await FulcrumProvider.Instance.gasPrice(),
+            gasPrice: await ethGasStation.getGasPrice(),
           })
         task.setTxHash(txHash)
       } catch (e) {
@@ -168,7 +170,7 @@ export class ManageCollateralProcessor {
           .sendTransactionAsync({
             from: account,
             gas: gasAmountBN.gt(0) ? gasAmountBN.toString() : '3000000',
-            gasPrice: await FulcrumProvider.Instance.gasPrice(),
+            gasPrice: await ethGasStation.getGasPrice(),
           })
         task.setTxHash(txHash)
       } catch (e) {

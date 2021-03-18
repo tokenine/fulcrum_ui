@@ -1,14 +1,13 @@
-import React, { useEffect, useState } from 'react'
-import { PreloaderChart } from '../components/PreloaderChart'
-import Asset from 'bzx-common/src/assets/Asset'
-
-import { LendRequest } from '../domain/LendRequest'
-import { FulcrumProviderEvents } from '../services/events/FulcrumProviderEvents'
-import LendTokenSelectorItem, { ILendTokenSelectorItemProps } from './LendTokenSelectorItem'
-
+import '../styles/components/lend-token-selector.scss'
 import { BigNumber } from '@0x/utils'
 import { FulcrumProvider } from '../services/FulcrumProvider'
-import '../styles/components/lend-token-selector.scss'
+import { FulcrumProviderEvents } from '../services/events/FulcrumProviderEvents'
+import { LendRequest } from '../domain/LendRequest'
+import { PreloaderChart } from '../components/PreloaderChart'
+import appConfig from 'bzx-common/src/config/appConfig'
+import Asset from 'bzx-common/src/assets/Asset'
+import LendTokenSelectorItem, { ILendTokenSelectorItemProps } from './LendTokenSelectorItem'
+import React, { useEffect, useState } from 'react'
 
 export interface ILendTokenSelectorProps {
   onLend: (request: LendRequest) => void
@@ -71,27 +70,12 @@ function LendTokenSelector(props: ILendTokenSelectorProps) {
     let aprs = { data: {}, success: false }
     let liquidities = { data: {}, success: false }
     // TODO: add API endpoints for bsc
-    if (process.env.REACT_APP_ETH_NETWORK === 'bsc') {
-      const assetsAPRs = await Promise.all(
-        assets.map((asset) => FulcrumProvider.Instance.getLendTokenInterestRate(asset))
-      )
-      const assetsLiquidities = await Promise.all(
-        assets.map((asset) => FulcrumProvider.Instance.getAvailableLiquidity(asset))
-      )
-      assets.forEach((asset, i) => {
-        // @ts-ignore
-        aprs.data[asset.toLowerCase()] = assetsAPRs[i]
-        // @ts-ignore
-        liquidities.data[asset.toLowerCase()] = assetsLiquidities[i]
-      })
-      // @ts-ignore
-      aprs.success = true
-      // @ts-ignore
-      liquidities.success = true
-    } else {
-      aprs = await (await fetch(`${apiUrl}/supply-rate-apr`)).json()
-      liquidities = await (await fetch(`${apiUrl}/liquidity`)).json()
+    if (appConfig.isBsc) {
+      setIsLoading(false)
+      return
     }
+    aprs = await (await fetch(`${apiUrl}/supply-rate-apr`)).json()
+    liquidities = await (await fetch(`${apiUrl}/liquidity`)).json()
 
     if (!aprs.success || !liquidities.success) {
       setIsLoading(false)
@@ -123,20 +107,59 @@ function LendTokenSelector(props: ILendTokenSelectorProps) {
   }
 
   const derivedUpdate = async () => {
-    if (lendTokenItemProps.size === 0) {
+    if (lendTokenItemProps.size === 0 && process.env.REACT_APP_ETH_NETWORK !== 'bsc') {
       setRetry(true)
       return
     } else {
       setRetry(false)
     }
+
+    let aprs = { data: {}, success: false }
+    let liquidities = { data: {}, success: false }
+    if (appConfig.isBsc) {
+      const assetsAPRs = await Promise.all(
+        assets.map((asset) => FulcrumProvider.Instance.getLendTokenInterestRate(asset))
+      )
+      const assetsLiquidities = await Promise.all(
+        assets.map((asset) => FulcrumProvider.Instance.getAvailableLiquidity(asset))
+      )
+      assets.forEach((asset, i) => {
+        // @ts-ignore
+        aprs.data[asset.toLowerCase()] = assetsAPRs[i]
+        // @ts-ignore
+        liquidities.data[asset.toLowerCase()] = assetsLiquidities[i]
+      })
+      // @ts-ignore
+      aprs.success = true
+      // @ts-ignore
+      liquidities.success = true
+    }
     const newLendTokenItemProps = new Map<Asset, ILendTokenSelectorItemProps>(lendTokenItemProps)
     for (const token in assets) {
-      if (!assets[token] || newLendTokenItemProps.get(assets[token]) === undefined) {
+      if (!assets[token]) {
         continue
       }
 
       const asset = assets[token]
-      const currentLendTokenItemProps = newLendTokenItemProps.get(asset)!
+      let currentLendTokenItemProps = undefined
+      if (process.env.REACT_APP_ETH_NETWORK !== 'bsc') {
+        currentLendTokenItemProps = newLendTokenItemProps.get(asset)!
+      } else {
+        // @ts-ignore
+        const interestRate = aprs.data[asset.toLowerCase()]
+        // @ts-ignore
+        const liquidity = liquidities.data[asset.toLowerCase()]
+
+        currentLendTokenItemProps = {
+          profit: new BigNumber(0),
+          balanceOfUser: new BigNumber(0),
+          asset,
+          onLend: props.onLend,
+          interestRate: new BigNumber(interestRate || 0),
+          liquidity: new BigNumber(liquidity || 0),
+          isLoading: false,
+        } as ILendTokenSelectorItemProps
+      }
 
       newLendTokenItemProps.set(asset, {
         ...currentLendTokenItemProps,
